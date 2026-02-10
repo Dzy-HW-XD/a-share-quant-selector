@@ -139,8 +139,8 @@ def calculate_zhixing_trend(df):
     short_term_trend = EMA(EMA(df['close'], 10), 10)
     
     # 知行多空线 = (MA5 + MA10 + MA20 + MA30) / 4
-    bull_bear_line = (MA(df['close'], 5) + MA(df['close'], 10) + 
-                      MA(df['close'], 20) + MA(df['close'], 30)) / 4
+    bull_bear_line = (MA(df['close'], 14) + MA(df['close'], 28) + 
+                      MA(df['close'], 57) + MA(df['close'], 114)) / 4
     
     return pd.DataFrame({
         'short_term_trend': short_term_trend,

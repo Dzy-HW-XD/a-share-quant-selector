@@ -109,6 +109,25 @@ class QuantSystem:
         
         print(f"已加载 {len(self.registry.list_strategies())} 个策略")
         
+        # 输出当前策略参数
+        print("\n当前策略参数:")
+        for strategy_name, strategy in self.registry.strategies.items():
+            print(f"\n  🎯 {strategy_name}:")
+            for param_name, param_value in strategy.params.items():
+                # 对特定参数添加说明
+                note = ""
+                if param_name == 'N':
+                    note = " (成交量倍数)"
+                elif param_name == 'M':
+                    note = " (回溯天数)"
+                elif param_name == 'CAP':
+                    note = f" ({param_value/1e8:.0f}亿市值门槛)"
+                elif param_name == 'J_VAL':
+                    note = " (J值上限)"
+                elif param_name in ['M1', 'M2', 'M3', 'M4']:
+                    note = " (MA周期)"
+                print(f"      {param_name}: {param_value}{note}")
+        
         # 加载股票数据
         print("\n加载股票数据...")
         stock_codes = self.csv_manager.list_all_stocks()
