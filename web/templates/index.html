@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A股量化选股系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="logo">
+                <span class="icon">📊</span>
+                <h1>量化选股</h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="icon">🏠</span> 概览
+                </li>
+                <li class="nav-item" data-page="stocks">
+                    <span class="icon">📈</span> 股票列表
+                </li>
+                <li class="nav-item" data-page="selection">
+                    <span class="icon">🎯</span> 选股结果
+                </li>
+                <li class="nav-item" data-page="strategies">
+                    <span class="icon">⚙️</span> 策略配置
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <p>A股量化选股系统 v1.0</p>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <header class="header">
+                <h2 id="page-title">系统概览</h2>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="run-selection-btn">
+                        <span class="icon">▶️</span> 执行选股
+                    </button>
+                    <span class="status-indicator" id="status-indicator">
+                        <span class="dot green"></span> 就绪
+                    </span>
+                </div>
+            </header>
+
+            <!-- 页面内容 -->
+            <div class="content">
+                <!-- 概览页 -->
+                <div id="dashboard-page" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">📈</div>
+                            <div class="stat-info">
+                                <h3 id="stat-stocks">-</h3>
+                                <p>股票数量</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-info">
+                                <h3 id="stat-date">-</h3>
+                                <p>最新数据</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🎯</div>
+                            <div class="stat-info">
+                                <h3 id="stat-strategies">-</h3>
+                                <p>策略数量</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>快速操作</h3>
+                        <div class="quick-actions">
+                            <button class="btn btn-secondary" onclick="loadStocks()">
+                                <span class="icon">📋</span> 查看股票列表
+                            </button>
+                            <button class="btn btn-secondary" onclick="runSelection()">
+                                <span class="icon">🎯</span> 执行选股
+                            </button>
+                            <button class="btn btn-secondary" onclick="location.reload()">
+                                <span class="icon">🔄</span> 刷新页面
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 股票列表页 -->
+                <div id="stocks-page" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>A股股票列表</h3>
+                            <input type="text" id="stock-search" placeholder="搜索股票代码或名称..." class="search-input">
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="stocks-table">
+                                <thead>
+                                    <tr>
+                                        <th>股票代码</th>
+                                        <th>股票名称</th>
+                                        <th>最新价</th>
+                                        <th>最新日期</th>
+                                        <th>市值(亿)</th>
+                                        <th>数据条数</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stocks-tbody">
+                                    <tr><td colspan="7" class="loading">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 选股结果页 -->
+                <div id="selection-page" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>选股结果</h3>
+                            <span id="selection-time" class="text-muted"></span>
+                        </div>
+                        <div id="selection-results">
+                            <p class="placeholder">点击"执行选股"按钮开始选股</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 策略配置页 -->
+                <div id="strategies-page" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>策略配置</h3>
+                            <button class="btn btn-primary" onclick="saveConfig()">
+                                <span class="icon">💾</span> 保存配置
+                            </button>
+                        </div>
+                        <div id="strategies-config">
+                            <p class="loading">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 股票详情弹窗 -->
+    <div id="stock-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">股票详情</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <canvas id="stock-chart" width="800" height="400"></canvas>
+                <div class="stock-info" id="stock-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
