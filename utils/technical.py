@@ -127,11 +127,18 @@ def KDJ(df, n=9, m1=3, m2=3):
 def calculate_zhixing_trend(df):
     """
     计算知行趋势线指标
+    
+    指标定义:
+    - 知行短期趋势线 = EMA(EMA(CLOSE,10),10)
+      对收盘价连续做两次10日指数移动平均
+    
+    - 知行多空线 = (MA(CLOSE,5) + MA(CLOSE,10) + MA(CLOSE,20) + MA(CLOSE,30)) / 4
+      5日、10日、20日、30日简单移动平均的平均值
     """
     # 知行短期趋势线 = EMA(EMA(CLOSE,10),10)
     short_term_trend = EMA(EMA(df['close'], 10), 10)
     
-    # 知行多空线 = MA(CLOSE,5)+MA(CLOSE,10)+MA(CLOSE,20)+MA(CLOSE,30)/4
+    # 知行多空线 = (MA5 + MA10 + MA20 + MA30) / 4
     bull_bear_line = (MA(df['close'], 5) + MA(df['close'], 10) + 
                       MA(df['close'], 20) + MA(df['close'], 30)) / 4
     

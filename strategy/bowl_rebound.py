@@ -1,16 +1,37 @@
 """
 碗口反弹策略 - 通达信公式 Python 实现
 
-通达信公式逻辑：
+指标定义：
 1. 知行短期趋势线 = EMA(EMA(CLOSE,10),10)
-2. 知行多空线 = MA(CLOSE,5)+MA(CLOSE,10)+MA(CLOSE,20)+MA(CLOSE,30)/4
+   - 对收盘价先做一次10日EMA，再做一次10日EMA
+
+2. 知行多空线 = (MA(CLOSE,5) + MA(CLOSE,10) + MA(CLOSE,20) + MA(CLOSE,30)) / 4
+   - 5日、10日、20日、30日均线平均值
+
+选股条件：
 3. 趋势线在上 = 知行短期趋势线 > 知行多空线
+   - 短期趋势在多空线上方，表示上升趋势
+
 4. 回落碗中 = CLOSE >= 知行多空线 AND CLOSE <= 知行短期趋势线
+   - 价格回落至碗中（多空线和短期趋势线之间）
+
 5. 回落短期趋势 = CLOSE >= 知行短期趋势线*0.98 AND CLOSE <= 知行短期趋势线*1.02
+   - 价格在短期趋势线附近±2%范围内
+
 6. KDJ计算(9,3,3): RSV->K->D->J
+   - RSV = (CLOSE - LLV(LOW,9)) / (HHV(HIGH,9) - LLV(LOW,9)) * 100
+   - K = SMA(RSV,3,1)
+   - D = SMA(K,3,1)
+   - J = 3*K - 2*D
+
 7. 关键K线 = V>=REF(V,1)*N AND C>O AND 流通市值>CAP
+   - 成交量是前一天的N倍以上 AND 阳线 AND 流通市值达标
+
 8. 异动 = EXIST(关键K线, M)
+   - 在M天内存在关键K线
+
 9. 选股信号 = 异动 AND 趋势线在上 AND (回落碗中 OR 回落短期趋势) AND J<=J_VAL
+   - 同时满足以上所有条件
 """
 import pandas as pd
 import sys
