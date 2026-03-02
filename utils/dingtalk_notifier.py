@@ -33,6 +33,8 @@ class DingTalkNotifier:
     def __init__(self, webhook_url=None, secret=None):
         self.webhook_url = webhook_url
         self.secret = secret
+        self._last_send_time = 0
+        self._min_interval = 1.0  # 最小发送间隔1秒，避免触发限速（660026错误）
     
     def _generate_sign(self):
         """生成钉钉签名"""
@@ -48,7 +50,12 @@ class DingTalkNotifier:
         return timestamp, sign
 
     def _send_request(self, data: dict) -> bool:
-        """发送HTTP请求到钉钉"""
+        """发送HTTP请求到钉钉（带速率限制）"""
+        # 速率限制：确保最小间隔
+        elapsed = time.time() - self._last_send_time
+        if elapsed < self._min_interval:
+            time.sleep(self._min_interval - elapsed)
+        
         timestamp, sign = self._generate_sign()
 
         if self.secret:
@@ -63,6 +70,9 @@ class DingTalkNotifier:
                 headers={'Content-Type': 'application/json'},
                 timeout=30
             )
+            
+            # 更新最后发送时间
+            self._last_send_time = time.time()
 
             if response.status_code == 200:
                 result = response.json()
@@ -70,6 +80,9 @@ class DingTalkNotifier:
                     return True
                 else:
                     print(f"✗ 钉钉返回错误: {result}")
+                    # 如果是限速错误，等待更长时间
+                    if result.get('errcode') == 660026:
+                        time.sleep(2)
                     return False
             else:
                 print(f"✗ HTTP错误: {response.status_code}")
@@ -81,11 +94,16 @@ class DingTalkNotifier:
     
     def _send_single_markdown(self, title, content, part_info=""):
         """
-        发送单条 Markdown 格式消息
+        发送单条 Markdown 格式消息（带速率限制）
         """
         if not self.webhook_url:
             print("警告: 未配置钉钉 webhook")
             return False
+        
+        # 速率限制：确保最小间隔
+        elapsed = time.time() - self._last_send_time
+        if elapsed < self._min_interval:
+            time.sleep(self._min_interval - elapsed)
         
         # 生成签名
         timestamp, sign = self._generate_sign()
@@ -117,12 +135,18 @@ class DingTalkNotifier:
                 timeout=10
             )
             
+            # 更新最后发送时间
+            self._last_send_time = time.time()
+            
             if response.status_code == 200:
                 result = response.json()
                 if result.get('errcode') == 0:
                     return True
                 else:
                     print(f"✗ 钉钉发送失败: {result}")
+                    # 如果是限速错误，等待更长时间
+                    if result.get('errcode') == 660026:
+                        time.sleep(2)
                     return False
             else:
                 print(f"✗ HTTP错误: {response.status_code}")
