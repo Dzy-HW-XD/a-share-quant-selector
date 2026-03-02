@@ -223,9 +223,9 @@ class QuantSystem:
         # 2. 选股
         results, stock_names = self.select_stocks(category=category)
         
-        # 3. 发送通知
+        # 3. 发送通知（传递分类筛选参数）
         if results:
-            self.notifier.send_stock_selection(results, stock_names)
+            self.notifier.send_stock_selection(results, stock_names, category_filter=category)
         
         return results
     

@@ -167,22 +167,36 @@ class DingTalkNotifier:
             print(f"✗ 部分消息发送失败 ({success_count}/{total_parts})")
             return False
     
-    def format_stock_results(self, results, stock_names=None):
+    def format_stock_results(self, results, stock_names=None, category_filter='all'):
         """
         格式化选股结果为 Markdown (适配手机端)
         :param results: {strategy_name: [signals]} 格式的结果
         :param stock_names: {code: name} 股票名称字典
+        :param category_filter: 分类筛选，'all'表示全部
         """
         if stock_names is None:
             stock_names = {}
         
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         
+        # 分类名称映射
+        category_names = {
+            'bowl_center': '🥣 回落碗中',
+            'near_duokong': '📊 靠近多空线',
+            'near_short_trend': '📈 靠近短期趋势线'
+        }
+        
+        # 筛选标签
+        filter_label = "全部" if category_filter == 'all' else category_names.get(category_filter, category_filter)
+        
         content = f"📊 A股量化选股结果\n\n"
         content += f"⏰ 时间: {now}\n"
+        content += f"🔍 筛选: {filter_label}\n"
         content += "━" * 30 + "\n\n"
         
         total_signals = 0
+        # 按分类统计
+        category_count = {'bowl_center': 0, 'near_duokong': 0, 'near_short_trend': 0}
         
         for strategy_name, signals in results.items():
             content += f"🎯 {strategy_name}\n\n"
@@ -191,29 +205,60 @@ class DingTalkNotifier:
                 content += "暂无选股信号\n\n"
                 continue
             
-            total_signals += len(signals)
-            
-            for i, signal in enumerate(signals, 1):
-                code = signal['code']
-                name = signal.get('name', stock_names.get(code, '未知'))
-                
+            # 按分类分组，并根据 category_filter 过滤
+            category_groups = {}
+            for signal in signals:
                 for s in signal['signals']:
-                    close = s.get('close', '-')
-                    j_val = s.get('J', '-')
-                    key_date = s.get('key_candle_date', '-')
-                    if isinstance(key_date, pd.Timestamp):
-                        key_date = key_date.strftime("%m-%d")
-                    reasons = ' '.join(s.get('reasons', []))
+                    cat = s.get('category', 'unknown')
+                    # 如果指定了分类筛选，只保留对应分类
+                    if category_filter != 'all' and cat != category_filter:
+                        continue
+                    if cat not in category_groups:
+                        category_groups[cat] = []
+                    category_groups[cat].append((signal, s))
+                    category_count[cat] = category_count.get(cat, 0) + 1
+            
+            total_signals += sum(len(group) for group in category_groups.values())
+            
+            # 按优先级顺序显示分类
+            display_order = ['bowl_center', 'near_duokong', 'near_short_trend']
+            # 如果指定了分类，只显示该分类
+            if category_filter != 'all' and category_filter in display_order:
+                display_order = [category_filter]
+            
+            for cat in display_order:
+                if cat in category_groups:
+                    group_signals = category_groups[cat]
+                    cat_name = category_names.get(cat, cat)
+                    content += f"{cat_name} ({len(group_signals)}只)\n"
+                    content += "-" * 20 + "\n"
                     
-                    # 手机端友好的格式
-                    content += f"{i}. {code} {name}\n"
-                    content += f"   💰 价格: {close}  |  J值: {j_val}\n"
-                    content += f"   📅 关键K线: {key_date}\n"
-                    content += f"   📝 {reasons}\n\n"
+                    for i, (signal, s) in enumerate(group_signals, 1):
+                        code = signal['code']
+                        name = signal.get('name', stock_names.get(code, '未知'))
+                        close = s.get('close', '-')
+                        j_val = s.get('J', '-')
+                        key_date = s.get('key_candle_date', '-')
+                        if isinstance(key_date, pd.Timestamp):
+                            key_date = key_date.strftime("%m-%d")
+                        reasons = ' '.join(s.get('reasons', []))
+                        
+                        # 手机端友好的格式
+                        content += f"{i}. {code} {name}\n"
+                        content += f"   💰 价格: {close}  |  J值: {j_val}\n"
+                        content += f"   📅 关键K线: {key_date}\n"
+                        content += f"   📝 {reasons}\n\n"
+                    
+                    content += "\n"
             
             content += "━" * 30 + "\n\n"
         
-        content += f"📈 共选出 {total_signals} 只股票\n\n"
+        # 显示分类统计
+        content += "📊 分类统计:\n"
+        content += f"   🥣 回落碗中: {category_count.get('bowl_center', 0)} 只\n"
+        content += f"   📊 靠近多空线: {category_count.get('near_duokong', 0)} 只\n"
+        content += f"   📈 靠近短期趋势线: {category_count.get('near_short_trend', 0)} 只\n"
+        content += f"   📈 共选出: {total_signals} 只\n\n"
         content += "⚠️ 提示: 以上结果仅供参考，不构成投资建议"
         
         return content
@@ -353,11 +398,14 @@ class DingTalkNotifier:
             print(f"✗ 部分消息发送失败 ({success_count}/{total_parts})")
             return False
 
-    def send_stock_selection(self, results, stock_names=None):
+    def send_stock_selection(self, results, stock_names=None, category_filter='all'):
         """
         发送选股结果到钉钉
+        :param results: 选股结果
+        :param stock_names: 股票名称字典
+        :param category_filter: 分类筛选，用于显示在通知中
         """
-        content = self.format_stock_results(results, stock_names)
+        content = self.format_stock_results(results, stock_names, category_filter)
         # 优先使用纯文本格式，手机端兼容性更好
         return self.send_text(content)
 
