@@ -14,8 +14,10 @@ import os
 import argparse
 import platform
 from pathlib import Path
-from datetime import datetime, time as dt_time
+from datetime import datetime
 import time
+
+import pandas as pd
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
@@ -92,9 +94,6 @@ class QuantSystem:
     
     def _smart_update(self, max_stocks=None, check_latest=True):
         """智能更新：3点前不更新，检查每只股票是否有当天数据"""
-        from datetime import datetime
-        import pandas as pd
-        
         today = datetime.now().date()
         current_time = datetime.now().time()
         market_close_time = datetime.strptime("15:00", "%H:%M").time()
