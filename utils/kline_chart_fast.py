@@ -85,12 +85,13 @@ def generate_kline_chart_fast(
         ax_kline.plot([i, i], [row['low'], row['high']], color=color, linewidth=0.8)
     
     # 绘制趋势线（如果存在）
+    # 短期趋势线 - 蓝色，多空线 - 黄色
     if 'short_term_trend' in df_plot.columns:
         ax_kline.plot(range(len(df_plot)), df_plot['short_term_trend'], 
-                     color='#0066FF', linewidth=2, label='Short')
+                     color='#0066FF', linewidth=2.5, label='Short Trend')
     if 'bull_bear_line' in df_plot.columns:
         ax_kline.plot(range(len(df_plot)), df_plot['bull_bear_line'], 
-                     color='#00AA00', linewidth=2, label='DuoKong')
+                     color='#FFCC00', linewidth=2.5, label='DuoKong Line')
     
     # 设置K线图
     ax_kline.set_xticks([])
