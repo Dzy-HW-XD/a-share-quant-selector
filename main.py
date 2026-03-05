@@ -447,12 +447,13 @@ class QuantSystem:
         
         print(f"\n✓ 匹配完成: {len(matched_results)} 只股票超过阈值")
         
-        # 显示Top10结果
+        # 显示Top N结果（使用配置）
+        from strategy.pattern_config import TOP_N_RESULTS
         if matched_results:
             print("\n" + "=" * 60)
-            print("📊 Top 10 B1完美图形匹配结果")
+            print(f"📊 Top {TOP_N_RESULTS} B1完美图形匹配结果")
             print("=" * 60)
-            for i, r in enumerate(matched_results[:10], 1):
+            for i, r in enumerate(matched_results[:TOP_N_RESULTS], 1):
                 emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 print(f"{emoji} {r['stock_code']} {r['stock_name']}")
                 print(f"   相似度: {r['similarity_score']}% | 匹配: {r['matched_case']}")
