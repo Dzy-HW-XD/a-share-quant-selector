@@ -289,11 +289,24 @@ class DingTalkNotifier:
             line_bytes = line.encode('utf-8')
             line_size = len(line_bytes) + 1  # +1 for newline
             
-            # 处理超长行：如果单行超过限制，强制截断
+            # 处理超长行：如果单行超过限制，强制截断（安全截断，不切断多字节字符）
             if line_size > MAX_SIZE:
                 chunk_size = 15000
                 for j in range(0, len(line_bytes), chunk_size):
-                    chunk = line_bytes[j:j+chunk_size].decode('utf-8', errors='ignore')
+                    chunk_bytes = line_bytes[j:j+chunk_size]
+                    # 安全解码，处理不完整的UTF-8序列
+                    try:
+                        chunk = chunk_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        for k in range(1, 5):
+                            try:
+                                chunk = chunk_bytes[:-k].decode('utf-8') if k < len(chunk_bytes) else chunk_bytes.decode('utf-8', errors='ignore')
+                                break
+                            except:
+                                continue
+                        else:
+                            chunk = chunk_bytes.decode('utf-8', errors='ignore')
+                    
                     if current_part:
                         parts.append('\n'.join(current_part))
                         current_part = []
@@ -546,10 +559,25 @@ class DingTalkNotifier:
             
             # 处理超长行：如果单行超过限制，强制截断
             if line_size > MAX_SIZE:
-                # 将超长行分段（每段约 15000 字符）
+                # 将超长行分段（每段约 15000 字节，但确保不切断多字节字符）
                 chunk_size = 15000
                 for j in range(0, len(line_bytes), chunk_size):
-                    chunk = line_bytes[j:j+chunk_size].decode('utf-8', errors='ignore')
+                    # 安全解码：忽略不完整的UTF-8序列
+                    chunk_bytes = line_bytes[j:j+chunk_size]
+                    try:
+                        chunk = chunk_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        # 如果截断在多字节字符中间，尝试找到完整的字符边界
+                        # 逐步减少字节直到能正确解码
+                        for k in range(1, 5):  # UTF-8最多4字节
+                            try:
+                                chunk = chunk_bytes[:-k].decode('utf-8') if k < len(chunk_bytes) else chunk_bytes.decode('utf-8', errors='ignore')
+                                break
+                            except:
+                                continue
+                        else:
+                            chunk = chunk_bytes.decode('utf-8', errors='ignore')
+                    
                     if current_part:
                         parts.append('\n'.join(current_part))
                         current_part = []
@@ -1025,26 +1053,27 @@ class DingTalkNotifier:
         from strategy.pattern_config import TOP_N_RESULTS
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         
-        # 分类名称映射
+        # 分类名称映射 (纯文本版，避免表情符号乱码)
         category_names = {
-            'bowl_center': '🥣 回落碗中',
-            'near_duokong': '📊 靠近多空线',
-            'near_short_trend': '📈 靠近短期趋势线'
+            'bowl_center': '[回落碗中]',
+            'near_duokong': '[靠近多空线]',
+            'near_short_trend': '[靠近短期趋势线]'
         }
         
         # 构建Markdown消息
         lines = [
-            "## 📊 选股结果（按B1完美图形相似度排序）",
+            "## 选股结果（按B1完美图形相似度排序）",
             "",
-            f"⏰ 时间: {now}",
-            f"📈 策略筛选: {total_selected} 只 | 📊 B1 Top匹配: {len(results)} 只",
+            f"时间: {now}",
+            f"策略筛选: {total_selected} 只 | B1 Top匹配: {len(results)} 只",
             "━" * 30,
             "",
         ]
         
         # 只显示前N个（从配置读取）
         for i, r in enumerate(results[:TOP_N_RESULTS], 1):
-            emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+            # 纯文本排名，避免表情符号乱码
+            rank = f"{i}."
             
             stock_code = r.get('stock_code', '')
             stock_name = r.get('stock_name', '')
@@ -1057,18 +1086,18 @@ class DingTalkNotifier:
             breakdown = r.get('breakdown', {})
             
             # 股票信息（空行分隔）
-            lines.append(f"{emoji} **{stock_code}** {stock_name}  **相似度: {score}%**")
-            lines.append(f"   📈 匹配案例: {matched_case} ({matched_date})")
+            lines.append(f"{rank} **{stock_code}** {stock_name}  **相似度: {score}%**")
+            lines.append(f"   匹配: {matched_case} ({matched_date})")
             
             # 分项得分
             trend_score = breakdown.get('trend_structure', 0)
             kdj_score = breakdown.get('kdj_state', 0)
             vol_score = breakdown.get('volume_pattern', 0)
             shape_score = breakdown.get('price_shape', 0)
-            lines.append(f"   📊 分项: 趋势{trend_score}% | KDJ{kdj_score}% | 量能{vol_score}% | 形态{shape_score}%")
+            lines.append(f"   分项: 趋势{trend_score}% | KDJ{kdj_score}% | 量能{vol_score}% | 形态{shape_score}%")
             
             cat_name = category_names.get(category, category)
-            lines.append(f"   💰 策略: {cat_name} | 价格: {close} | J值: {j_val}")
+            lines.append(f"   策略: {cat_name} | 价格: {close} | J值: {j_val}")
             lines.append("")  # 空行分隔
         
         # 添加图例说明
