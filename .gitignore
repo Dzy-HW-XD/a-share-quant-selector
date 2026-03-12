@@ -55,3 +55,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# One-off scripts (not part of main workflow)
+fix_market_cap.py
