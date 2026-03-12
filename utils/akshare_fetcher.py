@@ -106,6 +106,56 @@ class AKShareFetcher:
                 json.dump(stock_dict, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"  保存股票名称失败: {e}")
+
+    def _fetch_market_cap_tencent(self, stock_codes):
+        """使用腾讯接口批量获取市值数据（akshare备选方案）"""
+        market_cap_map = {}
+        batch_size = 100
+        total = len(stock_codes)
+        
+        try:
+            for i in range(0, total, batch_size):
+                batch = stock_codes[i:i + batch_size]
+                query_codes = []
+                for code in batch:
+                    if code.startswith('6') or code.startswith('8'):
+                        query_codes.append(f"sh{code}")
+                    else:
+                        query_codes.append(f"sz{code}")
+                
+                url = f"https://qt.gtimg.cn/q={','.join(query_codes)}"
+                resp = requests.get(url, timeout=30, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                })
+                
+                lines = resp.text.strip().split(';')
+                for line in lines:
+                    if 'v_' in line and '~' in line:
+                        try:
+                            # 提取代码
+                            code_match = line.split('v_')[1].split('=')[0] if 'v_' in line else ''
+                            if not code_match or len(code_match) < 8:
+                                continue
+                            code = code_match[2:]  # 去掉 sh/sz 前缀
+                            
+                            parts = line.split('~')
+                            if len(parts) >= 46:
+                                # 字段44是总市值（亿）
+                                cap = float(parts[44]) if parts[44] else 0
+                                if cap > 0:
+                                    # 转为元（腾讯接口是亿）
+                                    market_cap_map[code] = int(cap * 1e8)
+                        except:
+                            continue
+                
+                if i % 500 == 0 and i > 0:
+                    print(f"  已获取 {i}/{total} 只市值...")
+                    time.sleep(0.1)
+                    
+        except Exception as e:
+            print(f"  腾讯接口获取市值失败: {e}")
+        
+        return market_cap_map
     
     def _fetch_stock_list_http(self):
         """使用腾讯接口获取股票列表 - 覆盖5000+只A股"""
@@ -641,11 +691,13 @@ class AKShareFetcher:
         if max_stocks:
             stock_codes = stock_codes[:max_stocks]
         
-        # 批量获取市值数据
+        # 批量获取市值数据（主接口：akshare，备选：腾讯）
         print("\n正在批量获取市值数据...")
+        market_cap_map = {}
+        
+        # 方法1: 尝试akshare接口
         try:
             spot_df = ak.stock_zh_a_spot_em()
-            market_cap_map = {}
             for _, row in spot_df.iterrows():
                 code = str(row['代码']).zfill(6)
                 cap = row['总市值']
@@ -656,10 +708,16 @@ class AKShareFetcher:
                     else:
                         cap = int(cap)
                     market_cap_map[code] = cap
-            print(f"  成功获取 {len(market_cap_map)} 只股票市值")
+            print(f"  ✓ akshare接口成功: {len(market_cap_map)} 只股票市值")
         except Exception as e:
-            print(f"  获取市值数据失败: {e}")
-            market_cap_map = {}
+            print(f"  akshare接口失败: {e}")
+            print("  尝试腾讯备选接口...")
+            # 方法2: 使用腾讯接口备选
+            market_cap_map = self._fetch_market_cap_tencent(stock_codes)
+            if market_cap_map:
+                print(f"  ✓ 腾讯接口成功: {len(market_cap_map)} 只股票市值")
+            else:
+                print(f"  ✗ 腾讯接口也失败，市值数据将缺失")
         
         total = len(stock_codes)
         success = 0
@@ -822,12 +880,14 @@ class AKShareFetcher:
             print("=" * 60)
             return
         
-        # 批量获取最新市值数据（和价格数据一起更新）
+        # 批量获取最新市值数据（主接口：akshare，备选：腾讯）
         print("\n正在批量获取最新市值数据...")
+        market_cap_map = {}
+        
+        # 方法1: 尝试akshare接口
         try:
             import akshare as ak
             spot_df = ak.stock_zh_a_spot_em()
-            market_cap_map = {}
             for _, row in spot_df.iterrows():
                 code = str(row['代码']).zfill(6)
                 cap = row['总市值']
@@ -838,10 +898,17 @@ class AKShareFetcher:
                     else:
                         cap = int(cap)
                     market_cap_map[code] = cap
-            print(f"  成功获取 {len(market_cap_map)} 只股票市值")
+            print(f"  ✓ akshare接口成功: {len(market_cap_map)} 只股票市值")
         except Exception as e:
-            print(f"  获取市值数据失败: {e}")
-            market_cap_map = {}
+            print(f"  akshare接口失败: {e}")
+            print("  尝试腾讯备选接口...")
+            # 方法2: 使用腾讯接口备选（只获取需要更新的股票）
+            update_codes = [code for code, _ in stocks_to_update]
+            market_cap_map = self._fetch_market_cap_tencent(update_codes)
+            if market_cap_map:
+                print(f"  ✓ 腾讯接口成功: {len(market_cap_map)} 只股票市值")
+            else:
+                print(f"  ✗ 腾讯接口也失败，市值数据将缺失")
         
         print(f"\n开始更新 {need_update} 只股票...")
         print("=" * 60)
