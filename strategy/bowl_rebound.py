@@ -235,11 +235,19 @@ class BowlReboundStrategy(BaseStrategy):
         
         # 3. 异动条件：在M天内存在放量阳线
         lookback_df = df.head(self.params['M'])
+
+        # 剔除：如果回顾期内最大成交量的一天是阴线（最大量是阴量）
+        max_volume_idx = lookback_df['volume'].idxmax()
+        max_volume_row = lookback_df.loc[max_volume_idx]
+        if max_volume_row['close'] < max_volume_row['open']:
+            # 最大成交量那天是阴线，剔除
+            return []
+
         key_candles = lookback_df[
-            (lookback_df['key_candle'] == True) & 
+            (lookback_df['key_candle'] == True) &
             (lookback_df['close'] > lookback_df['open'])
         ]
-        
+
         if key_candles.empty:
             return []
         
