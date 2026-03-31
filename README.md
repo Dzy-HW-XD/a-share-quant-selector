@@ -1,3 +1,13 @@
+## Star History
+
+<a href="https://www.star-history.com/?repos=Dzy-HW-XD%2Fa-share-quant-selector&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Dzy-HW-XD/a-share-quant-selector&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Dzy-HW-XD/a-share-quant-selector&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Dzy-HW-XD/a-share-quant-selector&type=date&legend=top-left" />
+ </picture>
+</a>
+
 # A-Share Quant Selector
 
 基于 Python + akshare 的A股量化选股系统，实现碗口反弹策略，支持K线图可视化、Web管理界面和钉钉自动通知。
